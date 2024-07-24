@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model Prosumer{
+  id Int @id @default(autoincrement())
+  connectionId String @unique
+  password String
+  phone String @unique
+  SolarCapacity String
+  City String
+  State String
+  pincode String
+  GPSLocation String
+  Year Int
+  Load String
+  EnergyProdURL String
+  LoadConsumptionURL String
+  Transactions Transactions[]
+  OpenInterest SellOrderBook[]
+  createdAt DateTime @default(now())
+}
+model Consumer{
+  id Int @id @default(autoincrement())
+  connectionId String @unique
+  phone String @unique
+  Demand String
+  City String
+  State String
+  pincode String
+  Year Int
+  Load String
+  LoadConsumptionURL String
+  Transactions Transactions[]
+  OpenInterest BuyOrderBook[]
+  createdAt DateTime @default(now())
+}
+
+model Transactions{
+  id Int @id @default(autoincrement())
+  date DateTime @default(now())
+  TimeSlot String
+  SellerId String
+  Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
+  BuyerId String
+  Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
+  Volume String
+  Price String
+}
+
+model SellOrderBook{
+  id Int @id @default(autoincrement())
+  date DateTime @default(now())
+  TimeSlot String
+  SellerId String
+  Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
+  Volume String
+  Price String
+}
+model BuyOrderBook{
+  id Int @id @default(autoincrement())
+  date DateTime @default(now())
+  TimeSlot String
+  BuyerId String
+  Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
+  Volume String
+  Price String
+}
