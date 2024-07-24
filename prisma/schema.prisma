@@ -17,15 +17,16 @@ model Prosumer{
   connectionId String @unique
   password String
   phone String @unique
-  SolarCapacity String
-  City String
-  State String
-  pincode String
-  GPSLocation String
-  Year Int
-  Load String
-  EnergyProdURL String
-  LoadConsumptionURL String
+  username String
+  SolarCapacity String?
+  City String?
+  State String?
+  pincode String?
+  GPSLocation String?
+  Year Int?
+  Load String?
+  EnergyProdURL String?
+  LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest SellOrderBook[]
   createdAt DateTime @default(now())
@@ -33,14 +34,15 @@ model Prosumer{
 model Consumer{
   id Int @id @default(autoincrement())
   connectionId String @unique
+  username String
   phone String @unique
-  Demand String
-  City String
-  State String
-  pincode String
-  Year Int
-  Load String
-  LoadConsumptionURL String
+  Demand String?
+  City String?
+  State String?
+  pincode String?
+  Year Int?
+  Load String?
+  LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest BuyOrderBook[]
   createdAt DateTime @default(now())

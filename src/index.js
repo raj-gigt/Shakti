@@ -23,6 +23,121 @@ let otpStore = {};
 //add the necessary middlewares
 app.use(cors());
 app.use(bodyParser.json());
+app.post("/sendotp", async (req, res) => {
+  const { PhoneNo, CountryCode } = req.body;
+  const otp = Math.floor(100000 + Math.random() * 900000);
+  if (otpStore[PhoneNo]) {
+    clearTimeout(timeout);
+  }
+  otpStore[PhoneNo] = otp;
+  const message = `Your shakti OTP is ${otp}`;
+  console.log(PhoneNo, CountryCode);
+  try {
+    const messageCreate = await client.messages.create({
+      body: message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: `${CountryCode}${PhoneNo}`,
+    });
+    const timeout = setTimeout(() => {
+      otpStore[PhoneNo] = null;
+    }, 5000 * 60);
+    console.log(message);
+    res.status(200).send({ message: "OTP sent" });
+  } catch (err) {
+    res.status(500).send({ error: err });
+  }
+});
+app.post("/signup", (req, res) => {
+  const { PhoneNo, password, connectionId, otp, username, accountType } =
+    req.body;
+  const saltRounds = 10;
+  console.log("hello");
+  console.log(PhoneNo, password, email);
+
+  //hashing the password using bcrypt js
+  if (otp == otpStore[PhoneNo]) {
+    bcrypt
+      .hash(password, saltRounds)
+      .then(async (hashedPassword) => {
+        //create the user here.
+        console.log("Password hashed successfully.");
+        let user;
+        if (accountType == "prosumer") {
+          user = await prisma.prosumer.create({
+            data: {
+              phone: PhoneNo,
+              password: hashedPassword,
+              connectionId: connectionId,
+              username: username,
+            },
+          });
+        } else if (accountType == "consumer") {
+          user = await prisma.consumer.create({
+            data: {
+              phone: PhoneNo,
+              password: hashedPassword,
+              connectionId: connectionId,
+              username: username,
+            },
+          });
+        }
+        if (user) {
+          const token = jwt.sign({ userId: user.id }, SECRET_KEY);
+          res.status(200).json({ message: "User created successfully." });
+          otpStore[PhoneNo] = null;
+        }
+      })
+      .catch((err) => {
+        console.log(err);
+        res.status(500).json({ message: "Server error: " + err }); //this here would basically return an error if the username is already taken. or for any other error, the error will be sent to the frontend.
+      });
+  } else {
+    res.status(401).json({ message: "incorrect otp" });
+  }
+});
+app.post("/signin", async (req, res) => {
+  const { PhoneNo, password, connectionId, accountType } = req.body;
+  console.log(PhoneNo, password, connectionId, accountType);
+  //check if the user exists on the DB,if exists retreive it and compare the password
+  let user;
+  if (accountType == "prosumer") {
+    user = await prisma.prosumer.findUnique({
+      where: {
+        phone: PhoneNo,
+        connectionId: connectionId,
+      },
+    });
+  } else if (accountType == "consumer") {
+    user = await prisma.consumer.findUnique({
+      where: {
+        phone: PhoneNo,
+        connectionId: connectionId,
+      },
+    });
+  }
+  if (user) {
+    //if user exists, log him in
+    const hashedPassword = user.password;
+    bcrypt
+      .compare(password, hashedPassword) //hashedPassword will be retreived from the database.
+      .then((result) => {
+        if (result) {
+          //now send the token to the client and make it store in the localstorage.
+          const token = jwt.sign({ userId: user.id }, SECRET_KEY);
+          res.status(200).json({ token: token, message: "Login successful" });
+        } else {
+          console.log("galat");
+          res.status(401).json({ message: "Invalid credentials" });
+        }
+      })
+      .catch((err) => {
+        res.status(500).json({ message: "Internal server error" });
+      });
+  } else {
+    console.log("not found");
+    res.status(401).json({ message: "No user found with the given username." });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
