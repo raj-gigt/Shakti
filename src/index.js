@@ -4,7 +4,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
-
+const { authMiddleware } = require("./middleware/authmiddleware");
 const PORT = 3001;
 const SECRET_KEY = process.env.SECRET_KEY; //for signing the jwt token
 const app = express();
@@ -123,7 +123,10 @@ app.post("/signin", async (req, res) => {
       .then((result) => {
         if (result) {
           //now send the token to the client and make it store in the localstorage.
-          const token = jwt.sign({ userId: user.id }, SECRET_KEY);
+          const token = jwt.sign(
+            { userId: user.connectionId, accType: accountType },
+            SECRET_KEY
+          );
           res.status(200).json({ token: token, message: "Login successful" });
         } else {
           console.log("galat");
@@ -138,7 +141,59 @@ app.post("/signin", async (req, res) => {
     res.status(401).json({ message: "No user found with the given username." });
   }
 });
+app.post("/setup", authMiddleware, async (req, res) => {
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
 
+  if (accountType == "prosumer") {
+    const { solarCapacity, city, pincode, gps, solarBrand, year, load, state } =
+      req.body;
+    console.log(solarCapacity, city, pincode, gps, solarBrand, year, load);
+    try {
+      const prosumer = await prisma.prosumer.update({
+        where: {
+          connectionId: connectionId,
+        },
+        data: {
+          SolarCapacity: solarCapacity,
+          City: city,
+          pincode: pincode,
+          GPSLocation: gps,
+          solarBrand: solarBrand,
+          Year: year,
+          Load: load,
+          State: state,
+        },
+      });
+      res.status(200).json({ message: "Prosumer setup successful" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  } else if (accountType == "consumer") {
+    const { city, pincode, year, load } = req.body;
+    try {
+      const consumer = await prisma.consumer.update({
+        where: {
+          connectionId: connectionId,
+        },
+        data: {
+          SolarCapacity: solarCapacity,
+          City: city,
+          pincode: pincode,
+          GPSLocation: gps,
+          solarBrand: solarBrand,
+          Year: year,
+          Load: load,
+        },
+      });
+      res.status(200).json({ message: "Prosumer setup successful" });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

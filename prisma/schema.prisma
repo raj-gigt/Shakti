@@ -29,6 +29,7 @@ model Prosumer{
   LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest SellOrderBook[]
+  solarBrand String?
   createdAt DateTime @default(now())
 }
 model Consumer{
@@ -45,6 +46,7 @@ model Consumer{
   LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest BuyOrderBook[]
+  
   createdAt DateTime @default(now())
 }
 
