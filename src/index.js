@@ -82,8 +82,13 @@ app.post("/signup", (req, res) => {
           });
         }
         if (user) {
-          const token = jwt.sign({ userId: user.id }, SECRET_KEY);
-          res.status(200).json({ message: "User created successfully." });
+          const token = jwt.sign(
+            { userId: user.connectionId, accType: accountType },
+            SECRET_KEY
+          );
+          res
+            .status(200)
+            .json({ message: "User created successfully.", token: token });
           otpStore[PhoneNo] = null;
         }
       })
@@ -171,18 +176,17 @@ app.post("/setup", authMiddleware, async (req, res) => {
       res.status(500).json({ message: "Internal server error" });
     }
   } else if (accountType == "consumer") {
-    const { city, pincode, year, load } = req.body;
+    const { city, pincode, year, load, state, demand } = req.body;
     try {
       const consumer = await prisma.consumer.update({
         where: {
           connectionId: connectionId,
         },
         data: {
-          SolarCapacity: solarCapacity,
           City: city,
           pincode: pincode,
-          GPSLocation: gps,
-          solarBrand: solarBrand,
+          State: state,
+          Demand: demand,
           Year: year,
           Load: load,
         },
@@ -194,6 +198,51 @@ app.post("/setup", authMiddleware, async (req, res) => {
     }
   }
 });
+app.post("/placebid/dayahead", authMiddleware, (req, res) => {
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
+  const { arr } = req.body;
+  const nextDay = new Date();
+  nextDay.setDate(nextDay.getDate() + 1);
+  if (accountType == "prosumer") {
+    arr.map(async (item, index) => {
+      const { timeslot, volume, price } = item;
+      try {
+        const bid = await prisma.sellOrderBook.create({
+          data: {
+            SellerId: connectionId,
+            Timeslot: timeslot,
+            Volume: volume,
+            Price: price,
+            date: nextDay,
+          },
+        });
+        res.status(200).send({ message: "sell bid placed" });
+      } catch (err) {
+        res.status(500).send({ message: "server error" });
+      }
+    });
+  } else if (accountType == "consumer") {
+    arr.map(async (item, index) => {
+      const { timeslot, volume, price } = item;
+      try {
+        const bid = await prisma.buyOrderBook.create({
+          data: {
+            BuyerId: connectionId,
+            Timeslot: timeslot,
+            Volume: volume,
+            Price: price,
+            date: nextDay,
+          },
+        });
+        res.status(200).send({ message: "buy bid placed" });
+      } catch (err) {
+        res.status(500).send({ message: "server error" });
+      }
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

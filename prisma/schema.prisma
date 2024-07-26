@@ -58,8 +58,11 @@ model Transactions{
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
-  Volume String
-  Price String
+  Volume Int
+  Price Int
+  @@index([SellerId])
+  @@index([BuyerId])
+
 }
 
 model SellOrderBook{
@@ -68,8 +71,10 @@ model SellOrderBook{
   TimeSlot String
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
-  Volume String
-  Price String
+  Volume Int
+  Price Int
+  @@index([Price])
+  @@index([TimeSlot])
 }
 model BuyOrderBook{
   id Int @id @default(autoincrement())
@@ -77,6 +82,8 @@ model BuyOrderBook{
   TimeSlot String
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
-  Volume String
-  Price String
+  Volume Int
+  Price Int
+  @@index([Price])
+  @@index([TimeSlot])
 }
