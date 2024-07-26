@@ -255,8 +255,7 @@ app.get("/getTransactions", authMiddleware, async (req, res) => {
           SellerId: connectionId,
         },
       });
-    }
-    if (accountType == "consumer") {
+    } else if (accountType == "consumer") {
       const transactions = prisma.transactions.findMany({
         where: {
           BuyerId: connectionId,
