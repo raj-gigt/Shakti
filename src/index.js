@@ -86,9 +86,11 @@ app.post("/signup", (req, res) => {
             { userId: user.connectionId, accType: accountType },
             SECRET_KEY
           );
-          res
-            .status(200)
-            .json({ message: "User created successfully.", token: token });
+          res.status(200).json({
+            message: "User created successfully.",
+            token: token,
+            user: user,
+          });
           otpStore[PhoneNo] = null;
         }
       })
@@ -242,7 +244,30 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
     });
   }
 });
-
+app.get("/getTransactions", authMiddleware, async (req, res) => {
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
+  let transactions;
+  try {
+    if (accountType == "prosumer") {
+      transactions = prisma.transactions.findMany({
+        where: {
+          SellerId: connectionId,
+        },
+      });
+    }
+    if (accountType == "consumer") {
+      const transactions = prisma.transactions.findMany({
+        where: {
+          BuyerId: connectionId,
+        },
+      });
+    }
+    res.status(200).send({ transactions });
+  } catch (err) {
+    res.status(500).send({ message: "server error" });
+  }
+});
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
