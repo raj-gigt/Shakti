@@ -26,9 +26,7 @@ app.use(bodyParser.json());
 app.post("/sendotp", async (req, res) => {
   const { PhoneNo, CountryCode } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000);
-  if (otpStore[PhoneNo]) {
-    clearTimeout(timeout);
-  }
+
   otpStore[PhoneNo] = otp;
   const message = `Your shakti OTP is ${otp}`;
   console.log(PhoneNo, CountryCode);
@@ -38,9 +36,7 @@ app.post("/sendotp", async (req, res) => {
       from: process.env.TWILIO_PHONE_NUMBER,
       to: `${CountryCode}${PhoneNo}`,
     });
-    const timeout = setTimeout(() => {
-      otpStore[PhoneNo] = null;
-    }, 5000 * 60);
+
     console.log(message);
     res.status(200).send({ message: "OTP sent" });
   } catch (err) {
@@ -52,7 +48,7 @@ app.post("/signup", (req, res) => {
     req.body;
   const saltRounds = 10;
   console.log("hello");
-  console.log(PhoneNo, password, email);
+  console.log(PhoneNo, password);
 
   //hashing the password using bcrypt js
   if (otp == otpStore[PhoneNo]) {
@@ -151,11 +147,12 @@ app.post("/signin", async (req, res) => {
 app.post("/setup", authMiddleware, async (req, res) => {
   const connectionId = req.connectionId;
   const accountType = req.accountType;
-
+  console.log(accountType);
   if (accountType == "prosumer") {
-    const { solarCapacity, city, pincode, gps, solarBrand, year, load, state } =
+    console.log("hello4");
+    const { solarCapacity, city, pincode, gps, solarBrand, Year, load, state } =
       req.body;
-    console.log(solarCapacity, city, pincode, gps, solarBrand, year, load);
+    console.log(solarCapacity, city, pincode, gps, solarBrand, Year, load);
     try {
       const prosumer = await prisma.prosumer.update({
         where: {
@@ -207,41 +204,43 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
   const nextDay = new Date();
   nextDay.setDate(nextDay.getDate() + 1);
   if (accountType == "prosumer") {
-    arr.map(async (item, index) => {
-      const { timeslot, volume, price } = item;
-      try {
+    try {
+      arr.map(async (item, index) => {
+        const { timeslot, volume, price } = item;
+
         const bid = await prisma.sellOrderBook.create({
           data: {
             SellerId: connectionId,
-            Timeslot: timeslot,
+            TimeSlot: timeslot,
             Volume: volume,
             Price: price,
             date: nextDay,
           },
         });
-        res.status(200).send({ message: "sell bid placed" });
-      } catch (err) {
-        res.status(500).send({ message: "server error" });
-      }
-    });
+      });
+      res.status(200).send({ message: "sell bid placed" });
+    } catch (err) {
+      res.status(500).send({ message: "server error" });
+    }
   } else if (accountType == "consumer") {
-    arr.map(async (item, index) => {
-      const { timeslot, volume, price } = item;
-      try {
+    try {
+      arr.map(async (item, index) => {
+        const { timeslot, volume, price } = item;
+
         const bid = await prisma.buyOrderBook.create({
           data: {
             BuyerId: connectionId,
-            Timeslot: timeslot,
+            TimeSlot: timeslot,
             Volume: volume,
             Price: price,
             date: nextDay,
           },
         });
-        res.status(200).send({ message: "buy bid placed" });
-      } catch (err) {
-        res.status(500).send({ message: "server error" });
-      }
-    });
+      });
+      res.status(200).send({ message: "buy bid placed" });
+    } catch (err) {
+      res.status(500).send({ message: "server error" });
+    }
   }
 });
 app.get("/getTransactions", authMiddleware, async (req, res) => {

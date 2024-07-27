@@ -1,6 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-export const matcher = async () => {
+const matcher = async () => {
   const timeslot = ["00:00-00:15", "00:15-00:30"];
   timeslot.map(async (item, index) => {
     const sellBid = await prisma.sellOrderBook.findFirst({
@@ -43,4 +43,7 @@ export const matcher = async () => {
       });
     }
   });
+};
+module.exports = {
+  matcher,
 };
