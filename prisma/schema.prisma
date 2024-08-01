@@ -23,13 +23,16 @@ model Prosumer{
   State String?
   pincode String?
   GPSLocation String?
-  Year Int?
+  Year String?
   Load String?
+  Tilt Int?
+  Azimuth Int?
   EnergyProdURL String?
   LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest SellOrderBook[]
   solarBrand String?
+  setupStatus Boolean @default(false)
   createdAt DateTime @default(now())
 }
 model Consumer{
@@ -41,9 +44,10 @@ model Consumer{
   City String?
   State String?
   pincode String?
-  Year Int?
+  Year String?
   Load String?
   LoadConsumptionURL String?
+  setupStatus Boolean @default(false)
   Transactions Transactions[]
   OpenInterest BuyOrderBook[]
   

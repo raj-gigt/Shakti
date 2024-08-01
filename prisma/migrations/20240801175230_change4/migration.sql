@@ -4,15 +4,17 @@ CREATE TABLE "Prosumer" (
     "connectionId" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
-    "SolarCapacity" TEXT NOT NULL,
-    "City" TEXT NOT NULL,
-    "State" TEXT NOT NULL,
-    "pincode" TEXT NOT NULL,
-    "GPSLocation" TEXT NOT NULL,
-    "Year" INTEGER NOT NULL,
-    "Load" TEXT NOT NULL,
-    "EnergyProdURL" TEXT NOT NULL,
-    "LoadConsumptionURL" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
+    "SolarCapacity" TEXT,
+    "City" TEXT,
+    "State" TEXT,
+    "pincode" TEXT,
+    "GPSLocation" TEXT,
+    "Year" INTEGER,
+    "Load" TEXT,
+    "EnergyProdURL" TEXT,
+    "LoadConsumptionURL" TEXT,
+    "solarBrand" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Prosumer_pkey" PRIMARY KEY ("id")
@@ -22,14 +24,15 @@ CREATE TABLE "Prosumer" (
 CREATE TABLE "Consumer" (
     "id" SERIAL NOT NULL,
     "connectionId" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
-    "Demand" TEXT NOT NULL,
-    "City" TEXT NOT NULL,
-    "State" TEXT NOT NULL,
-    "pincode" TEXT NOT NULL,
-    "Year" INTEGER NOT NULL,
-    "Load" TEXT NOT NULL,
-    "LoadConsumptionURL" TEXT NOT NULL,
+    "Demand" TEXT,
+    "City" TEXT,
+    "State" TEXT,
+    "pincode" TEXT,
+    "Year" INTEGER,
+    "Load" TEXT,
+    "LoadConsumptionURL" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Consumer_pkey" PRIMARY KEY ("id")
@@ -42,8 +45,8 @@ CREATE TABLE "Transactions" (
     "TimeSlot" TEXT NOT NULL,
     "SellerId" TEXT NOT NULL,
     "BuyerId" TEXT NOT NULL,
-    "Volume" TEXT NOT NULL,
-    "Price" TEXT NOT NULL,
+    "Volume" INTEGER NOT NULL,
+    "Price" INTEGER NOT NULL,
 
     CONSTRAINT "Transactions_pkey" PRIMARY KEY ("id")
 );
@@ -54,8 +57,8 @@ CREATE TABLE "SellOrderBook" (
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "TimeSlot" TEXT NOT NULL,
     "SellerId" TEXT NOT NULL,
-    "Volume" TEXT NOT NULL,
-    "Price" TEXT NOT NULL,
+    "Volume" INTEGER NOT NULL,
+    "Price" INTEGER NOT NULL,
 
     CONSTRAINT "SellOrderBook_pkey" PRIMARY KEY ("id")
 );
@@ -66,8 +69,8 @@ CREATE TABLE "BuyOrderBook" (
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "TimeSlot" TEXT NOT NULL,
     "BuyerId" TEXT NOT NULL,
-    "Volume" TEXT NOT NULL,
-    "Price" TEXT NOT NULL,
+    "Volume" INTEGER NOT NULL,
+    "Price" INTEGER NOT NULL,
 
     CONSTRAINT "BuyOrderBook_pkey" PRIMARY KEY ("id")
 );
@@ -83,6 +86,24 @@ CREATE UNIQUE INDEX "Consumer_connectionId_key" ON "Consumer"("connectionId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Consumer_phone_key" ON "Consumer"("phone");
+
+-- CreateIndex
+CREATE INDEX "Transactions_SellerId_idx" ON "Transactions"("SellerId");
+
+-- CreateIndex
+CREATE INDEX "Transactions_BuyerId_idx" ON "Transactions"("BuyerId");
+
+-- CreateIndex
+CREATE INDEX "SellOrderBook_Price_idx" ON "SellOrderBook"("Price");
+
+-- CreateIndex
+CREATE INDEX "SellOrderBook_TimeSlot_idx" ON "SellOrderBook"("TimeSlot");
+
+-- CreateIndex
+CREATE INDEX "BuyOrderBook_Price_idx" ON "BuyOrderBook"("Price");
+
+-- CreateIndex
+CREATE INDEX "BuyOrderBook_TimeSlot_idx" ON "BuyOrderBook"("TimeSlot");
 
 -- AddForeignKey
 ALTER TABLE "Transactions" ADD CONSTRAINT "Transactions_SellerId_fkey" FOREIGN KEY ("SellerId") REFERENCES "Prosumer"("connectionId") ON DELETE RESTRICT ON UPDATE CASCADE;

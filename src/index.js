@@ -24,17 +24,17 @@ let otpStore = {};
 app.use(cors());
 app.use(bodyParser.json());
 app.post("/sendotp", async (req, res) => {
-  const { PhoneNo, CountryCode } = req.body;
+  const { PhoneNo } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000);
 
   otpStore[PhoneNo] = otp;
   const message = `Your shakti OTP is ${otp}`;
-  console.log(PhoneNo, CountryCode);
+  console.log(PhoneNo);
   try {
     const messageCreate = await client.messages.create({
       body: message,
       from: process.env.TWILIO_PHONE_NUMBER,
-      to: `${CountryCode}${PhoneNo}`,
+      to: `+91${PhoneNo}`,
     });
 
     console.log(message);
@@ -85,7 +85,7 @@ app.post("/signup", (req, res) => {
           res.status(200).json({
             message: "User created successfully.",
             token: token,
-            user: user,
+            accountType: accountType,
           });
           otpStore[PhoneNo] = null;
         }
@@ -150,9 +150,29 @@ app.post("/setup", authMiddleware, async (req, res) => {
   console.log(accountType);
   if (accountType == "prosumer") {
     console.log("hello4");
-    const { solarCapacity, city, pincode, gps, solarBrand, Year, load, state } =
-      req.body;
-    console.log(solarCapacity, city, pincode, gps, solarBrand, Year, load);
+    const {
+      solarCapacity,
+      city,
+      pincode,
+      gps,
+      brand,
+      year,
+      connectedLoad,
+      state,
+      tilt,
+      azimuth,
+    } = req.body;
+    console.log(
+      solarCapacity,
+      city,
+      pincode,
+      gps,
+      brand,
+      year,
+      connectedLoad,
+      tilt,
+      azimuth
+    );
     try {
       const prosumer = await prisma.prosumer.update({
         where: {
@@ -163,19 +183,23 @@ app.post("/setup", authMiddleware, async (req, res) => {
           City: city,
           pincode: pincode,
           GPSLocation: gps,
-          solarBrand: solarBrand,
+          solarBrand: brand,
           Year: year,
-          Load: load,
+          Load: connectedLoad,
           State: state,
+          Tilt: parseInt(tilt),
+          Azimuth: parseInt(azimuth),
+          setupStatus: true,
         },
       });
-      res.status(200).json({ message: "Prosumer setup successful" });
+
+      res.status(200).json({ message: "success" });
     } catch (err) {
       console.log(err);
       res.status(500).json({ message: "Internal server error" });
     }
   } else if (accountType == "consumer") {
-    const { city, pincode, year, load, state, demand } = req.body;
+    const { city, pincode, year, connectedLoad, state, demand } = req.body;
     try {
       const consumer = await prisma.consumer.update({
         where: {
@@ -187,15 +211,58 @@ app.post("/setup", authMiddleware, async (req, res) => {
           State: state,
           Demand: demand,
           Year: year,
-          Load: load,
+          Load: connectedLoad,
+          setupStatus: true,
         },
       });
-      res.status(200).json({ message: "Prosumer setup successful" });
+      res.status(200).json({ message: "success" });
     } catch (err) {
       console.log(err);
       res.status(500).json({ message: "Internal server error" });
     }
   }
+});
+app.get("/deleteUserdb", authMiddleware, async (req, res) => {
+  const prosumerdb = await prisma.prosumer.deleteMany({});
+  const consumerdb = await prisma.consumer.deleteMany({});
+
+  res.status(200).send({ prosumerdb, consumerdb });
+});
+app.get("/setupstatus", authMiddleware, async (req, res) => {
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
+  if (accountType == "prosumer") {
+    try {
+      const setupStatusres = await prisma.prosumer.findUnique({
+        where: {
+          connectionId: connectionId,
+        },
+      });
+      res.status(200).json({ status: setupStatusres.setupStatus });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  } else if (accountType == "consumer") {
+    try {
+      const setupStatusres = await prisma.consumer.findUnique({
+        where: {
+          connectionId: connectionId,
+        },
+      });
+      res.status(200).json({ status: setupStatusres.setupStatus });
+    } catch (err) {
+      console.log(err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  } else {
+    res.status(401).json({ message: "Unauthorized" });
+  }
+});
+app.get("/userData", authMiddleware, async (req, res) => {
+  const prosumerData = await prisma.prosumer.findMany();
+  const consumerData = await prisma.consumer.findMany();
+  res.status(200).json({ prosumerData, consumerData });
 });
 app.post("/placebid/dayahead", authMiddleware, (req, res) => {
   const connectionId = req.connectionId;
@@ -218,8 +285,11 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
           },
         });
       });
-      res.status(200).send({ message: "sell bid placed" });
+
+      res.status(200).send({ message: "bid placed" });
+      console.log("yayyy");
     } catch (err) {
+      console.log(err);
       res.status(500).send({ message: "server error" });
     }
   } else if (accountType == "consumer") {
@@ -237,11 +307,21 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
           },
         });
       });
-      res.status(200).send({ message: "buy bid placed" });
+      res.status(200).send({ message: "bid placed" });
     } catch (err) {
       res.status(500).send({ message: "server error" });
     }
   }
+});
+app.get("/oiDbData", authMiddleware, async (req, res) => {
+  const sellOi = await prisma.sellOrderBook.findMany();
+  const buyOi = await prisma.buyOrderBook.findMany();
+  res.status(200).send({ sellOi, buyOi });
+});
+app.get("/delOiData", authMiddleware, async (req, res) => {
+  const sellOi = await prisma.sellOrderBook.deleteMany({});
+  const buyOi = await prisma.buyOrderBook.deleteMany({});
+  res.status(200).send({ sellOi, buyOi });
 });
 app.get("/getTransactions", authMiddleware, async (req, res) => {
   const connectionId = req.connectionId;

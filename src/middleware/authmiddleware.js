@@ -6,12 +6,11 @@ const authMiddleware = (req, res, next) => {
 
     try {
       const decodedData = Object(jwt.verify(token, process.env.SECRET_KEY)); //a sync function
-      console.log(decodedData);
+
       req.connectionId = decodedData.userId;
       req.accountType = decodedData.accType;
-      console.log(req.accountType);
+
       next();
-      console.log("hello1");
     } catch (err) {
       res.status(401).json({
         message: "Invalid jwt token, please try logging in again.",
