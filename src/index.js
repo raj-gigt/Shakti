@@ -10,7 +10,7 @@ const SECRET_KEY = process.env.SECRET_KEY; //for signing the jwt token
 const app = express();
 const prisma = new PrismaClient();
 const twilio = require("twilio");
-
+const { matcher, formatDate } = require("./utils/matchingAlgorithm");
 // Find your Account SID and Auth Token at twilio.com/console
 // and set the environment variables. See http://twil.io/secure
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -41,6 +41,15 @@ app.post("/sendotp", async (req, res) => {
     res.status(200).send({ message: "OTP sent" });
   } catch (err) {
     res.status(500).send({ error: err });
+  }
+});
+app.get("/startmatcher", authMiddleware, async (req, res) => {
+  try {
+    matcher();
+    res.status(200).send({ message: "matching successful" });
+  } catch (err) {
+    console.log(err);
+    res.status(401).send({ message: err });
   }
 });
 app.post("/signup", (req, res) => {
@@ -238,6 +247,8 @@ app.get("/setupstatus", authMiddleware, async (req, res) => {
           connectionId: connectionId,
         },
       });
+
+      console.log({ status: setupStatusres.setupStatus });
       res.status(200).json({ status: setupStatusres.setupStatus });
     } catch (err) {
       console.log(err);
@@ -260,16 +271,42 @@ app.get("/setupstatus", authMiddleware, async (req, res) => {
   }
 });
 app.get("/userData", authMiddleware, async (req, res) => {
-  const prosumerData = await prisma.prosumer.findMany();
-  const consumerData = await prisma.consumer.findMany();
-  res.status(200).json({ prosumerData, consumerData });
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
+  if (accountType == "prosumer") {
+    try {
+      const prosumer = await prisma.prosumer.findUnique({
+        where: {
+          connectionId: connectionId,
+        },
+      });
+      res.status(200).json({ message: prosumer });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: err });
+    }
+  } else if (accountType == "consumer") {
+    try {
+      const consumer = await prisma.consumer.findUnique({
+        where: {
+          connectionId: connectionId,
+        },
+      });
+      res.status(200).json({ message: consumer });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: err });
+    }
+  }
 });
 app.post("/placebid/dayahead", authMiddleware, (req, res) => {
   const connectionId = req.connectionId;
   const accountType = req.accountType;
   const { arr } = req.body;
-  const nextDay = new Date();
-  nextDay.setDate(nextDay.getDate() + 1);
+  const date = new Date();
+  const utcTime = date.getTime();
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+  let istTime = new Date(utcTime + IST_OFFSET);
   if (accountType == "prosumer") {
     try {
       arr.map(async (item, index) => {
@@ -281,7 +318,7 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
             TimeSlot: timeslot,
             Volume: volume,
             Price: price,
-            date: nextDay,
+            date: istTime,
           },
         });
       });
@@ -303,7 +340,7 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
             TimeSlot: timeslot,
             Volume: volume,
             Price: price,
-            date: nextDay,
+            date: istTime,
           },
         });
       });
@@ -326,22 +363,41 @@ app.get("/delOiData", authMiddleware, async (req, res) => {
 app.get("/getTransactions", authMiddleware, async (req, res) => {
   const connectionId = req.connectionId;
   const accountType = req.accountType;
-  let transactions;
+  const date = new Date();
+  const utcTime = date.getTime();
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
+  const istDate = new Date(utcTime + IST_OFFSET);
+  // const istDateString = formatDate(istDate);
+  const istDateString = "2024-08-06";
   try {
     if (accountType == "prosumer") {
-      transactions = prisma.transactions.findMany({
+      const transactions = await prisma.transactions.findMany({
         where: {
           SellerId: connectionId,
+          date: istDateString,
+        },
+        select: {
+          TimeSlot: true,
+          Volume: true,
+          Price: true,
         },
       });
+      console.log(transactions);
+      res.status(200).send({ transactions: transactions });
     } else if (accountType == "consumer") {
-      const transactions = prisma.transactions.findMany({
+      const transactions = await prisma.transactions.findMany({
         where: {
           BuyerId: connectionId,
+          date: istDateString,
+        },
+        select: {
+          TimeSlot: true,
+          Volume: true,
+          Price: true,
         },
       });
+      res.status(200).send({ transactions: transactions });
     }
-    res.status(200).send({ transactions });
   } catch (err) {
     res.status(500).send({ message: "server error" });
   }

@@ -40,6 +40,7 @@ model Consumer{
   connectionId String @unique
   username String
   phone String @unique
+  password String
   Demand String?
   City String?
   State String?
@@ -56,7 +57,7 @@ model Consumer{
 
 model Transactions{
   id Int @id @default(autoincrement())
-  date DateTime @default(now())
+  date String
   TimeSlot String
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
