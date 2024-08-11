@@ -34,6 +34,8 @@ model Prosumer{
   solarBrand String?
   setupStatus Boolean @default(false)
   createdAt DateTime @default(now())
+  hederaAccountId String?
+  
 }
 model Consumer{
   id Int @id @default(autoincrement())
@@ -51,6 +53,7 @@ model Consumer{
   setupStatus Boolean @default(false)
   Transactions Transactions[]
   OpenInterest BuyOrderBook[]
+  hederaAccountId String?
   
   createdAt DateTime @default(now())
 }

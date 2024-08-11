@@ -11,6 +11,15 @@ const app = express();
 const prisma = new PrismaClient();
 const twilio = require("twilio");
 const { matcher, formatDate } = require("./utils/matchingAlgorithm");
+const {
+  Client,
+  PrivateKey,
+  AccountCreateTransaction,
+  AccountBalanceQuery,
+  Hbar,
+  TransferTransaction,
+  AccountId,
+} = require("@hashgraph/sdk");
 // Find your Account SID and Auth Token at twilio.com/console
 // and set the environment variables. See http://twil.io/secure
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -19,17 +28,38 @@ const client = twilio(accountSid, authToken);
 console.log("Connected to the DB");
 let otpStore = {};
 //define the interfaces
-
+let client1;
 //add the necessary middlewares
 const corsOptions = {
-  origin: "https://market-platform.onrender.com",
+  origin: "http://localhost:3000",
   credentials: true, // Allow credentials (cookies, etc.)
 };
 app.use(cors(corsOptions));
+// app.use(cors());
 app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "hello to shakti server" });
 });
+const clientInit = async () => {
+  const myAccountId = process.env.MY_ACCOUNT_ID;
+  const myPrivateKey = process.env.MY_PRIVATE_KEY;
+  console.log("client init started");
+  // If we weren't able to grab it, we should throw a new error
+  if (!myAccountId || !myPrivateKey) {
+    throw new Error(
+      "Environment variables MY_ACCOUNT_ID and MY_PRIVATE_KEY must be present"
+    );
+  }
+
+  //Create your Hedera Testnet client
+  client1 = Client.forTestnet();
+
+  //Set your account as the client's operator
+  client1.setOperator(myAccountId, myPrivateKey);
+  console.log(client1);
+  //Set the default maximum transaction fee (in Hbar)
+};
+clientInit();
 app.post("/sendotp", async (req, res) => {
   const { PhoneNo } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000);
@@ -52,14 +82,14 @@ app.post("/sendotp", async (req, res) => {
 });
 app.get("/startmatcher", authMiddleware, async (req, res) => {
   try {
-    matcher();
+    matcher(client1, process.env.MY_ACCOUNT_ID);
     res.status(200).send({ message: "matching successful" });
   } catch (err) {
     console.log(err);
     res.status(401).send({ message: err });
   }
 });
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
   const { PhoneNo, password, connectionId, otp, username, accountType } =
     req.body;
   const saltRounds = 10;
@@ -68,48 +98,104 @@ app.post("/signup", (req, res) => {
 
   //hashing the password using bcrypt js
   if (otp == otpStore[PhoneNo]) {
-    bcrypt
-      .hash(password, saltRounds)
-      .then(async (hashedPassword) => {
-        //create the user here.
-        console.log("Password hashed successfully.");
-        let user;
-        if (accountType == "prosumer") {
-          user = await prisma.prosumer.create({
-            data: {
-              phone: PhoneNo,
-              password: hashedPassword,
-              connectionId: connectionId,
-              username: username,
-            },
-          });
-        } else if (accountType == "consumer") {
-          user = await prisma.consumer.create({
-            data: {
-              phone: PhoneNo,
-              password: hashedPassword,
-              connectionId: connectionId,
-              username: username,
-            },
-          });
-        }
-        if (user) {
-          const token = jwt.sign(
-            { userId: user.connectionId, accType: accountType },
-            SECRET_KEY
-          );
-          res.status(200).json({
-            message: "User created successfully.",
-            token: token,
-            accountType: accountType,
-          });
-          otpStore[PhoneNo] = null;
-        }
-      })
-      .catch((err) => {
-        console.log(err);
-        res.status(500).json({ message: "Server error: " + err }); //this here would basically return an error if the username is already taken. or for any other error, the error will be sent to the frontend.
-      });
+    let user;
+    try {
+      if (accountType == "prosumer") {
+        user = await prisma.prosumer.findUnique({
+          where: {
+            phoneNo: PhoneNo,
+          },
+        });
+      } else if (accountType == "consumer") {
+        user = await prisma.prosumer.findUnique({
+          where: {
+            phoneNo: PhoneNo,
+          },
+        });
+      }
+    } catch (err) {
+      res.status(500).send({ message: err });
+      console.log(err);
+    }
+    if (!!user) {
+      console.log(user);
+      res.status(401).send({ message: "user already exists" });
+    } else {
+      const newAccountPrivateKey = PrivateKey.generateED25519();
+      const newAccountPublicKey = newAccountPrivateKey.publicKey;
+      console.log(newAccountPrivateKey);
+      //Create a new account with 1,000 tinybar starting balance
+      const newAccount = await new AccountCreateTransaction()
+        .setKey(newAccountPublicKey)
+        .setInitialBalance(Hbar.fromTinybars(50))
+        .execute(client1);
+
+      // Get the new account ID
+      const getReceipt = await newAccount.getReceipt(client1);
+      const newAccountId = getReceipt.accountId;
+      const newAccountIdString = newAccountId.toString();
+
+      //Log the account ID
+      console.log("The new account ID is: " + newAccountId);
+
+      //Verify the account balance
+      const accountBalance = await new AccountBalanceQuery()
+        .setAccountId(newAccountId)
+        .execute(client1);
+
+      console.log(
+        "The new account balance is: " +
+          accountBalance.hbars.toTinybars() +
+          " tinybar."
+      );
+
+      bcrypt
+        .hash(password, saltRounds)
+        .then(async (hashedPassword) => {
+          //create the user here.
+          console.log("Password hashed successfully.");
+          let user;
+          if (accountType == "prosumer") {
+            user = await prisma.prosumer.create({
+              data: {
+                phone: PhoneNo,
+                password: hashedPassword,
+                connectionId: connectionId,
+                username: username,
+
+                hederaAccountId: newAccountIdString,
+              },
+            });
+          } else if (accountType == "consumer") {
+            user = await prisma.consumer.create({
+              data: {
+                phone: PhoneNo,
+                password: hashedPassword,
+                connectionId: connectionId,
+                username: username,
+
+                hederaAccountId: newAccountIdString,
+              },
+            });
+          }
+          if (user) {
+            const token = jwt.sign(
+              { userId: user.connectionId, accType: accountType },
+              SECRET_KEY
+            );
+            res.status(200).json({
+              message: "User created successfully.",
+              token: token,
+              accountType: accountType,
+            });
+            otpStore[PhoneNo] = null;
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+          res.status(500).json({ message: "Server error: " + err }); //this here would basically return an error if the username is already taken. or for any other error, the error will be sent to the frontend.
+        });
+    }
   } else {
     res.status(401).json({ message: "incorrect otp" });
   }

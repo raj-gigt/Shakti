@@ -1,6 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
-const matcher = async () => {
+const matcher = async (client1, myAccountId) => {
   const timeslot = [
     "00:00-00:15",
     "00:15-00:30",
@@ -107,6 +107,9 @@ const matcher = async () => {
       orderBy: {
         Price: "asc",
       },
+      include: {
+        Seller: true,
+      },
     });
     const buyBid = await prisma.buyOrderBook.findFirst({
       where: {
@@ -115,6 +118,9 @@ const matcher = async () => {
 
       orderBy: {
         Price: "desc",
+      },
+      include: {
+        Buyer: true,
       },
     });
     if (sellBid && buyBid) {
@@ -135,6 +141,34 @@ const matcher = async () => {
           date: dateString,
         },
       });
+      const sellerAccountId = sellBid.Seller.hederaAccountId;
+      const buyerAccountId = buyBid.Buyer.hederaAccountId;
+      const sellHbar = await new TransferTransaction()
+        .addHbarTransfer(myAccountId, Hbar.fromTinybars(volume)) //Sending account
+        .addHbarTransfer(sellerAccountId, Hbar.fromTinybars(-volume)) //Receiving account
+        .execute(client1)
+        .setTransactionMemo(
+          JSON.stringify({ date: dateString, timeslot: item })
+        );
+
+      const buyHbar = await new TransferTransaction()
+        .addHbarTransfer(myAccountId, Hbar.fromTinybars(-volume)) //Sending account
+        .addHbarTransfer(buyerAccountId, Hbar.fromTinybars(volume)) //Receiving account
+        .execute(client1)
+        .setTransactionMemo(
+          JSON.stringify({ date: dateString, timeslot: item })
+        );
+      //Verify the transaction reached consensus
+      const selltransactionReceipt = await sellHbar.getReceipt(client1);
+      const buytransactionReceipt = await buyHbar.getReceipt(client1);
+      console.log(
+        "The sell transfer transaction from my account to the new account was: " +
+          selltransactionReceipt.toString()
+      );
+      console.log(
+        "The buy transfer transaction from my account to the new account was: " +
+          buytransactionReceipt.toString()
+      );
     }
   });
 };
