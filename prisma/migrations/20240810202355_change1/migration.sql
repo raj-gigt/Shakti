@@ -10,11 +10,14 @@ CREATE TABLE "Prosumer" (
     "State" TEXT,
     "pincode" TEXT,
     "GPSLocation" TEXT,
-    "Year" INTEGER,
+    "Year" TEXT,
     "Load" TEXT,
+    "Tilt" INTEGER,
+    "Azimuth" INTEGER,
     "EnergyProdURL" TEXT,
     "LoadConsumptionURL" TEXT,
     "solarBrand" TEXT,
+    "setupStatus" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Prosumer_pkey" PRIMARY KEY ("id")
@@ -26,13 +29,15 @@ CREATE TABLE "Consumer" (
     "connectionId" TEXT NOT NULL,
     "username" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
     "Demand" TEXT,
     "City" TEXT,
     "State" TEXT,
     "pincode" TEXT,
-    "Year" INTEGER,
+    "Year" TEXT,
     "Load" TEXT,
     "LoadConsumptionURL" TEXT,
+    "setupStatus" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Consumer_pkey" PRIMARY KEY ("id")
@@ -41,7 +46,7 @@ CREATE TABLE "Consumer" (
 -- CreateTable
 CREATE TABLE "Transactions" (
     "id" SERIAL NOT NULL,
-    "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date" TEXT NOT NULL,
     "TimeSlot" TEXT NOT NULL,
     "SellerId" TEXT NOT NULL,
     "BuyerId" TEXT NOT NULL,

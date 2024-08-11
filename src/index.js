@@ -5,7 +5,7 @@ const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 const { authMiddleware } = require("./middleware/authmiddleware");
-const PORT = 3001;
+const PORT = process.env.PORT;
 const SECRET_KEY = process.env.SECRET_KEY; //for signing the jwt token
 const app = express();
 const prisma = new PrismaClient();
@@ -21,8 +21,15 @@ let otpStore = {};
 //define the interfaces
 
 //add the necessary middlewares
-app.use(cors());
+const corsOptions = {
+  origin: "https://market-platform.onrender.com",
+  credentials: true, // Allow credentials (cookies, etc.)
+};
+app.use(cors(corsOptions));
 app.use(bodyParser.json());
+app.get("/", (req, res) => {
+  res.status(200).send({ message: "hello to shakti server" });
+});
 app.post("/sendotp", async (req, res) => {
   const { PhoneNo } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000);

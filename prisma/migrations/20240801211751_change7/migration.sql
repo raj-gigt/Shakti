@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "Consumer" ALTER COLUMN "Year" SET DATA TYPE TEXT;
-
--- AlterTable
-ALTER TABLE "Prosumer" ALTER COLUMN "Year" SET DATA TYPE TEXT;
