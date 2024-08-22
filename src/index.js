@@ -20,6 +20,8 @@ const {
   TransferTransaction,
   AccountId,
 } = require("@hashgraph/sdk");
+const { discomauthmiddleware } = require("./middleware/discomauthmiddleware");
+const { timeslotConvert } = require("./constants/discomConstants");
 // Find your Account SID and Auth Token at twilio.com/console
 // and set the environment variables. See http://twil.io/secure
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -30,8 +32,12 @@ let otpStore = {};
 //define the interfaces
 let client1;
 //add the necessary middlewares
+const allowedorigin = [
+  process.env.FRONTEND_ORIGIN,
+  process.env.DISCOM_FRONTEND_ORIGIN,
+];
 const corsOptions = {
-  origin: "http://localhost:3000",
+  origin: allowedorigin,
   credentials: true, // Allow credentials (cookies, etc.)
 };
 app.use(cors(corsOptions));
@@ -40,26 +46,26 @@ app.use(bodyParser.json());
 app.get("/", (req, res) => {
   res.status(200).send({ message: "hello to shakti server" });
 });
-const clientInit = async () => {
-  const myAccountId = process.env.MY_ACCOUNT_ID;
-  const myPrivateKey = process.env.MY_PRIVATE_KEY;
-  console.log("client init started");
-  // If we weren't able to grab it, we should throw a new error
-  if (!myAccountId || !myPrivateKey) {
-    throw new Error(
-      "Environment variables MY_ACCOUNT_ID and MY_PRIVATE_KEY must be present"
-    );
-  }
+// const clientInit = async () => {
+//   const myAccountId = process.env.MY_ACCOUNT_ID;
+//   const myPrivateKey = process.env.MY_PRIVATE_KEY;
+//   console.log("client init started");
+//   // If we weren't able to grab it, we should throw a new error
+//   if (!myAccountId || !myPrivateKey) {
+//     throw new Error(
+//       "Environment variables MY_ACCOUNT_ID and MY_PRIVATE_KEY must be present"
+//     );
+//   }
 
-  //Create your Hedera Testnet client
-  client1 = Client.forTestnet();
+//   //Create your Hedera Testnet client
+//   client1 = Client.forTestnet();
 
-  //Set your account as the client's operator
-  client1.setOperator(myAccountId, myPrivateKey);
-  console.log(client1);
-  //Set the default maximum transaction fee (in Hbar)
-};
-clientInit();
+//   //Set your account as the client's operator
+//   client1.setOperator(myAccountId, myPrivateKey);
+//   console.log(client1);
+//   //Set the default maximum transaction fee (in Hbar)
+// };
+// clientInit();
 app.post("/sendotp", async (req, res) => {
   const { PhoneNo } = req.body;
   const otp = Math.floor(100000 + Math.random() * 900000);
@@ -89,6 +95,41 @@ app.get("/startmatcher", authMiddleware, async (req, res) => {
     res.status(401).send({ message: err });
   }
 });
+app.get("/getUserEnergyRealtimedata", authMiddleware, async (req, res) => {
+  const connectionId = req.connectionId;
+  const accountType = req.accountType;
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  // console.log(date);
+  const dateString = formatDate(date);
+  if ((accountType = "prosumer")) {
+    try {
+      const userData = await prisma.prosumerData.findMany({
+        where: {
+          prosumerId: connectionId,
+          date: dateString,
+        },
+      });
+      res.status(200).send({ data: userData });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: err });
+    }
+  } else if ((accountType = "consumer")) {
+    try {
+      const userData = await prisma.consumerData.findMany({
+        where: {
+          consumerId: connectionId,
+          date: dateString,
+        },
+      });
+      res.status(200).send({ data: userData });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: err });
+    }
+  }
+});
 app.post("/signup", async (req, res) => {
   const { PhoneNo, password, connectionId, otp, username, accountType } =
     req.body;
@@ -103,13 +144,13 @@ app.post("/signup", async (req, res) => {
       if (accountType == "prosumer") {
         user = await prisma.prosumer.findUnique({
           where: {
-            phoneNo: PhoneNo,
+            phone: PhoneNo,
           },
         });
       } else if (accountType == "consumer") {
-        user = await prisma.prosumer.findUnique({
+        user = await prisma.consumer.findUnique({
           where: {
-            phoneNo: PhoneNo,
+            phone: PhoneNo,
           },
         });
       }
@@ -121,33 +162,33 @@ app.post("/signup", async (req, res) => {
       console.log(user);
       res.status(401).send({ message: "user already exists" });
     } else {
-      const newAccountPrivateKey = PrivateKey.generateED25519();
-      const newAccountPublicKey = newAccountPrivateKey.publicKey;
-      console.log(newAccountPrivateKey);
-      //Create a new account with 1,000 tinybar starting balance
-      const newAccount = await new AccountCreateTransaction()
-        .setKey(newAccountPublicKey)
-        .setInitialBalance(Hbar.fromTinybars(50))
-        .execute(client1);
+      // const newAccountPrivateKey = PrivateKey.generateED25519();
+      // const newAccountPublicKey = newAccountPrivateKey.publicKey;
+      // console.log(newAccountPrivateKey);
+      // //Create a new account with 1,000 tinybar starting balance
+      // const newAccount = await new AccountCreateTransaction()
+      //   .setKey(newAccountPublicKey)
+      //   .setInitialBalance(Hbar.fromTinybars(50))
+      //   .execute(client1);
 
-      // Get the new account ID
-      const getReceipt = await newAccount.getReceipt(client1);
-      const newAccountId = getReceipt.accountId;
-      const newAccountIdString = newAccountId.toString();
+      // // Get the new account ID
+      // const getReceipt = await newAccount.getReceipt(client1);
+      // const newAccountId = getReceipt.accountId;
+      // const newAccountIdString = newAccountId.toString();
 
-      //Log the account ID
-      console.log("The new account ID is: " + newAccountId);
+      // //Log the account ID
+      // console.log("The new account ID is: " + newAccountId);
 
-      //Verify the account balance
-      const accountBalance = await new AccountBalanceQuery()
-        .setAccountId(newAccountId)
-        .execute(client1);
+      // //Verify the account balance
+      // const accountBalance = await new AccountBalanceQuery()
+      //   .setAccountId(newAccountId)
+      //   .execute(client1);
 
-      console.log(
-        "The new account balance is: " +
-          accountBalance.hbars.toTinybars() +
-          " tinybar."
-      );
+      // console.log(
+      //   "The new account balance is: " +
+      //     accountBalance.hbars.toTinybars() +
+      //     " tinybar."
+      // );
 
       bcrypt
         .hash(password, saltRounds)
@@ -163,7 +204,7 @@ app.post("/signup", async (req, res) => {
                 connectionId: connectionId,
                 username: username,
 
-                hederaAccountId: newAccountIdString,
+                // hederaAccountId: newAccountIdString,
               },
             });
           } else if (accountType == "consumer") {
@@ -174,7 +215,7 @@ app.post("/signup", async (req, res) => {
                 connectionId: connectionId,
                 username: username,
 
-                hederaAccountId: newAccountIdString,
+                // hederaAccountId: newAccountIdString,
               },
             });
           }
@@ -398,8 +439,7 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
   const { arr } = req.body;
   const date = new Date();
   const utcTime = date.getTime();
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
-  let istTime = new Date(utcTime + IST_OFFSET);
+
   if (accountType == "prosumer") {
     try {
       arr.map(async (item, index) => {
@@ -408,10 +448,10 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
         const bid = await prisma.sellOrderBook.create({
           data: {
             SellerId: connectionId,
-            TimeSlot: timeslot,
+            TimeSlot: timeslotConvert.indexOf(timeslot) + 1,
             Volume: volume,
             Price: price,
-            date: istTime,
+            date: utcTime,
           },
         });
       });
@@ -430,10 +470,10 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
         const bid = await prisma.buyOrderBook.create({
           data: {
             BuyerId: connectionId,
-            TimeSlot: timeslot,
+            TimeSlot: timeslotConvert.indexOf(timeslot) + 1,
             Volume: volume,
             Price: price,
-            date: istTime,
+            date: utcTime,
           },
         });
       });
@@ -457,11 +497,10 @@ app.get("/getTransactions", authMiddleware, async (req, res) => {
   const connectionId = req.connectionId;
   const accountType = req.accountType;
   const date = new Date();
-  const utcTime = date.getTime();
-  const IST_OFFSET = 5.5 * 60 * 60 * 1000; // IST is UTC + 5:30
-  const istDate = new Date(utcTime + IST_OFFSET);
-  // const istDateString = formatDate(istDate);
-  const istDateString = "2024-08-06";
+  date.setDate(date.getDate());
+
+  const istDateString = formatDate(date);
+  // const istDateString = "2024-08-06";
   try {
     if (accountType == "prosumer") {
       const transactions = await prisma.transactions.findMany({
@@ -495,6 +534,83 @@ app.get("/getTransactions", authMiddleware, async (req, res) => {
     res.status(500).send({ message: "server error" });
   }
 });
+app.get("/discom/signin", discomauthmiddleware, (req, res) => {
+  res.status(200).send({ message: "success" });
+});
+app.get("/discom/getTransactions", discomauthmiddleware, async (req, res) => {
+  const { connectionId, startDate, endDate } = req.query;
+  console.log(connectionId, startDate, endDate);
+  try {
+    const transactions = await prisma.transactions.findMany({
+      where: {
+        OR: [
+          { SellerId: connectionId, date: { gte: startDate, lte: endDate } },
+          { BuyerId: connectionId, date: { gte: startDate, lte: endDate } },
+        ],
+      },
+    });
+    res.status(200).send({ message: transactions });
+  } catch (err) {
+    console.log(err);
+    res.status(500).send({ message: "server error" });
+  }
+});
+app.get(
+  "/discom/aggregated/solarproduction",
+  discomauthmiddleware,
+  async (req, res) => {
+    const date = new Date();
+    date.setDate(date.getDate());
+    const istDateString = formatDate(date);
+    try {
+      const aggregateSolarProduction = await prisma.prosumerData.groupBy({
+        by: ["TimeSlot"], // Group by TimeSlot
+        where: {
+          date: istDateString, // Filter by the given date
+        },
+        _sum: {
+          Solargeneration: true, // Sum the Solargeneration for each TimeSlot
+        },
+      });
+      const formattedResult = aggregateSolarProduction.map((item) => ({
+        timeslot: item.TimeSlot,
+        Solargeneration: item._sum.Solargeneration,
+      }));
+      res.status(200).send({ message: formattedResult });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: "server error" });
+    }
+  }
+);
+app.get(
+  "/discom/aggregated/clearedschedule",
+  discomauthmiddleware,
+  async (req, res) => {
+    const { date } = req.headers;
+    try {
+      const aggregateClearedSchedule = await prisma.transactions.groupBy({
+        by: ["TimeSlot", "Price"], // Group by TimeSlot
+        where: {
+          date: date, // Filter by the given date
+        },
+        _sum: {
+          Volume: true,
+        },
+      });
+      const formattedResult = aggregateClearedSchedule.map((item) => ({
+        timeslot: item.TimeSlot,
+        price: item.Price,
+        volume: item._sum.Volume,
+      }));
+      res.status(200).send({ message: formattedResult });
+    } catch (err) {
+      console.log(err);
+      res.status(500).send({ message: "server error" });
+    }
+    // Sum the ClearedSchedule for each TimeSlot
+  }
+);
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

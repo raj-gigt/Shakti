@@ -31,10 +31,11 @@ model Prosumer{
   LoadConsumptionURL String?
   Transactions Transactions[]
   OpenInterest SellOrderBook[]
+  prosumerData ProsumerData[]
   solarBrand String?
   setupStatus Boolean @default(false)
   createdAt DateTime @default(now())
-  hederaAccountId String?
+  
   
 }
 model Consumer{
@@ -53,7 +54,7 @@ model Consumer{
   setupStatus Boolean @default(false)
   Transactions Transactions[]
   OpenInterest BuyOrderBook[]
-  hederaAccountId String?
+  consumerData ConsumerData[]
   
   createdAt DateTime @default(now())
 }
@@ -61,7 +62,7 @@ model Consumer{
 model Transactions{
   id Int @id @default(autoincrement())
   date String
-  TimeSlot String
+  TimeSlot Int
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
   BuyerId String
@@ -76,7 +77,7 @@ model Transactions{
 model SellOrderBook{
   id Int @id @default(autoincrement())
   date DateTime @default(now())
-  TimeSlot String
+  TimeSlot Int
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
   Volume Int
@@ -87,11 +88,34 @@ model SellOrderBook{
 model BuyOrderBook{
   id Int @id @default(autoincrement())
   date DateTime @default(now())
-  TimeSlot String
+  TimeSlot Int
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
   Volume Int
   Price Int
   @@index([Price])
   @@index([TimeSlot])
+}
+model ProsumerData{
+  id Int @id @default(autoincrement())
+  prosumerId String
+  prosumer Prosumer @relation(fields: [prosumerId], references: [connectionId])
+  date String
+  TimeSlot Int
+  Solargeneration Int
+  netEnergy Int
+  @@index([prosumerId])
+  @@index([TimeSlot])
+  @@index([date])
+}
+model ConsumerData{
+  id Int @id @default(autoincrement())
+  consumerId String
+  consumer Consumer @relation(fields: [consumerId], references: [connectionId])
+  date String
+  TimeSlot Int
+  energyConsumption Int
+  @@index([consumerId])
+  @@index([TimeSlot])
+  @@index([date])
 }
