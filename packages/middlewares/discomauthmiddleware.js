@@ -1,4 +1,4 @@
-const { discomCreds } = require("../constants/discomConstants");
+const { discomCreds } = require("@shakti/constants/discomConstants");
 const discomauthmiddleware = (req, res, next) => {
   const { username, password } = req.headers;
   console.log(username, password);
@@ -13,6 +13,7 @@ const discomauthmiddleware = (req, res, next) => {
     res.status(500).send({ message: err });
   }
 };
+
 module.exports = {
   discomauthmiddleware,
 };

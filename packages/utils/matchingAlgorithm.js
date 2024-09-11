@@ -1,4 +1,4 @@
-const { PrismaClient } = require("@prisma/client");
+const { PrismaClient } = require("@shakti/db/client");
 const prisma = new PrismaClient();
 const matcher = async (client1, myAccountId) => {
   let timeslot = [];

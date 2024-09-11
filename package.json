@@ -1,23 +1,24 @@
 {
-  "dependencies": {
-    "@hashgraph/sdk": "^2.49.2",
-    "@prisma/client": "^5.17.0",
-    "bcrypt": "^5.1.1",
-    "cors": "^2.8.5",
-    "express": "^4.19.2",
-    "jsonwebtoken": "^9.0.2",
-    "prisma": "^5.17.0",
-    "twilio": "^5.2.2"
-  },
   "name": "shakti_platform_backend",
-  "description": "Here is the API documentation in Markdown format for a README.md file:",
   "version": "1.0.0",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node src/index.js"
+    "shaktihub:dev": "cd apps/shakti_hub_backend && npm run start",
+    "marketplatform:dev": "cd apps/market_platform && npm run dev",
+    "shaktiplatform:dev": "cd apps/shakti_platform_backend && npm run start",
+    "shaktioneplatform:dev": "cd apps/shakti_one_platform && npm run dev"
   },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "private": true,
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^16.4.5"
+  }
 }

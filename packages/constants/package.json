@@ -1,0 +1,15 @@
+{
+  "name": "@shakti/constants",
+  "version": "1.0.0",
+  "description": "",
+  "main": "discomConstants.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "exports": {
+    "./discomConstants": "./discomConstants.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

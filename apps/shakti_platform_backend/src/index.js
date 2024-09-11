@@ -3,14 +3,35 @@ const bcrypt = require("bcrypt");
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
-const { PrismaClient } = require("@prisma/client");
-const { authMiddleware } = require("./middleware/authmiddleware");
+const { PrismaClient } = require("@shakti/db/client");
+const { authMiddleware } = require("@shakti/middlewares/authmiddleware");
+const dotenv = require("dotenv");
+const path = require("path");
+
+let prisma;
+
+if (process.env.NODE_ENV === "production") {
+  prisma = new PrismaClient();
+} else {
+  if (!global.prisma) {
+    global.prisma = new PrismaClient();
+  }
+  prisma = global.prisma;
+}
+
+// Load the .env file from the current directory
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+
+// Log the environment variables to check if they're loaded
+console.log(process.env);
+
 const PORT = process.env.PORT;
-const SECRET_KEY = process.env.SECRET_KEY; //for signing the jwt token
+const SECRET_KEY = process.env.SECRET_KEY;
+//for signing the jwt token
 const app = express();
-const prisma = new PrismaClient();
 const twilio = require("twilio");
-const { matcher, formatDate } = require("./utils/matchingAlgorithm");
+
+const { matcher, formatDate } = require("@shakti/utils/matchingAlgorithm");
 const {
   Client,
   PrivateKey,
@@ -20,12 +41,21 @@ const {
   TransferTransaction,
   AccountId,
 } = require("@hashgraph/sdk");
-const { discomauthmiddleware } = require("./middleware/discomauthmiddleware");
-const { timeslotConvert } = require("./constants/discomConstants");
+const {
+  discomauthmiddleware,
+} = require("@shakti/middlewares/discomauthmiddleware");
+const { timeslotConvert } = require("@shakti/constants/discomConstants");
 // Find your Account SID and Auth Token at twilio.com/console
 // and set the environment variables. See http://twil.io/secure
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
+
+// Check if the required environment variables are set
+if (!accountSid || !authToken) {
+  console.error("Twilio credentials are missing. Please check your .env file.");
+  process.exit(1);
+}
+
 const client = twilio(accountSid, authToken);
 console.log("Connected to the DB");
 let otpStore = {};
@@ -322,16 +352,16 @@ app.post("/setup", authMiddleware, async (req, res) => {
           connectionId: connectionId,
         },
         data: {
-          SolarCapacity: solarCapacity,
+          SolarCapacity: parseFloat(solarCapacity),
           City: city,
           pincode: pincode,
           GPSLocation: gps,
           solarBrand: brand,
           Year: year,
-          Load: connectedLoad,
+          Load: parseFloat(connectedLoad),
           State: state,
-          Tilt: parseInt(tilt),
-          Azimuth: parseInt(azimuth),
+          Tilt: parseFloat(tilt),
+          Azimuth: parseFloat(azimuth),
           setupStatus: true,
         },
       });
@@ -352,9 +382,9 @@ app.post("/setup", authMiddleware, async (req, res) => {
           City: city,
           pincode: pincode,
           State: state,
-          Demand: demand,
+          Demand: parseFloat(demand),
           Year: year,
-          Load: connectedLoad,
+          Load: parseFloat(connectedLoad),
           setupStatus: true,
         },
       });
@@ -587,7 +617,8 @@ app.get(
   "/discom/aggregated/clearedschedule",
   discomauthmiddleware,
   async (req, res) => {
-    const { date } = req.headers;
+    const { date } = req.query;
+    console.log(date);
     try {
       const aggregateClearedSchedule = await prisma.transactions.groupBy({
         by: ["TimeSlot", "Price"], // Group by TimeSlot

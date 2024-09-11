@@ -18,15 +18,15 @@ model Prosumer{
   password String
   phone String @unique
   username String
-  SolarCapacity String?
+  SolarCapacity Float?
   City String?
   State String?
   pincode String?
   GPSLocation String?
   Year String?
-  Load String?
-  Tilt Int?
-  Azimuth Int?
+  Load Float?
+  Tilt Float?
+  Azimuth Float?
   EnergyProdURL String?
   LoadConsumptionURL String?
   Transactions Transactions[]
@@ -44,12 +44,12 @@ model Consumer{
   username String
   phone String @unique
   password String
-  Demand String?
+  Demand Float?
   City String?
   State String?
   pincode String?
   Year String?
-  Load String?
+  Load Float?
   LoadConsumptionURL String?
   setupStatus Boolean @default(false)
   Transactions Transactions[]
@@ -67,11 +67,11 @@ model Transactions{
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
-  Volume Int
-  Price Int
+  Volume Float
+  Price Float
   @@index([SellerId])
   @@index([BuyerId])
-
+  @@index([TimeSlot])
 }
 
 model SellOrderBook{
@@ -80,8 +80,8 @@ model SellOrderBook{
   TimeSlot Int
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
-  Volume Int
-  Price Int
+  Volume Float
+  Price Float
   @@index([Price])
   @@index([TimeSlot])
 }
@@ -91,8 +91,8 @@ model BuyOrderBook{
   TimeSlot Int
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
-  Volume Int
-  Price Int
+  Volume Float
+  Price Float
   @@index([Price])
   @@index([TimeSlot])
 }
@@ -102,11 +102,13 @@ model ProsumerData{
   prosumer Prosumer @relation(fields: [prosumerId], references: [connectionId])
   date String
   TimeSlot Int
-  Solargeneration Int
-  netEnergy Int
+  Solargeneration Float
+  netEnergy Float
+  deviation Float
   @@index([prosumerId])
   @@index([TimeSlot])
   @@index([date])
+  @@unique([prosumerId,TimeSlot,date])
 }
 model ConsumerData{
   id Int @id @default(autoincrement())
@@ -114,8 +116,10 @@ model ConsumerData{
   consumer Consumer @relation(fields: [consumerId], references: [connectionId])
   date String
   TimeSlot Int
-  energyConsumption Int
+  energyConsumption Float
+  deviation Float
   @@index([consumerId])
   @@index([TimeSlot])
   @@index([date])
+  @@unique([consumerId, TimeSlot,date])
 }
