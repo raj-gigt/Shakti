@@ -468,8 +468,8 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
   const accountType = req.accountType;
   const { arr } = req.body;
   const date = new Date();
-  const utcTime = date.getTime();
-
+  date.setDate(date.getDate() + 1);
+  const dateString = formatDate(date);
   if (accountType == "prosumer") {
     try {
       arr.map(async (item, index) => {
@@ -481,7 +481,7 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
             TimeSlot: timeslotConvert.indexOf(timeslot) + 1,
             Volume: volume,
             Price: price,
-            date: utcTime,
+            date: dateString,
           },
         });
       });
@@ -503,7 +503,7 @@ app.post("/placebid/dayahead", authMiddleware, (req, res) => {
             TimeSlot: timeslotConvert.indexOf(timeslot) + 1,
             Volume: volume,
             Price: price,
-            date: utcTime,
+            date: dateString,
           },
         });
       });

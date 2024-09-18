@@ -76,7 +76,7 @@ model Transactions{
 
 model SellOrderBook{
   id Int @id @default(autoincrement())
-  date DateTime @default(now())
+  date String
   TimeSlot Int
   SellerId String
   Seller Prosumer @relation(fields: [SellerId], references: [connectionId])
@@ -87,7 +87,7 @@ model SellOrderBook{
 }
 model BuyOrderBook{
   id Int @id @default(autoincrement())
-  date DateTime @default(now())
+  date String
   TimeSlot Int
   BuyerId String
   Buyer Consumer @relation(fields: [BuyerId], references: [connectionId])
