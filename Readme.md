@@ -111,17 +111,22 @@ All error responses will have a JSON body with a `message` property describing t
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone <repository-url>
    ```
-2. Navigate to the project directory:
-   ```bash
-   cd shakti_platform_backend
+
    ```
-3. Install dependencies:
+
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
-4. Set up your `.env` file with the required environment variables.
+3. Set up your `.env` file with the required environment variables.
+4. See package.json for running each project scripts
 
 ## this repo has my previous intern work at a startup called Shakti Energy. Now that they have pivoted to a new product, I'm making this repo public.
+
+## Docker files are incorrect.
